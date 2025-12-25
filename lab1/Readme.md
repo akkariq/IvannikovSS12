@@ -167,7 +167,9 @@ python3 hello.py
 python3 greeting.py
 ```
 
-![скриншот](111.png)
+<img width="193" height="134" alt="image" src="https://github.com/user-attachments/assets/cec98ce1-b568-404b-a03e-2731d3190ee4" />
+
+
 
 ### Проверка SSH-подключения
 
@@ -175,4 +177,5 @@ python3 greeting.py
 ssh -T git@github.com
 ```
 
-![скриншот](222.png)
+<img width="580" height="67" alt="image" src="https://github.com/user-attachments/assets/61a3bda0-d5c8-4f66-96e6-7d5c5a7bd20d" />
+
