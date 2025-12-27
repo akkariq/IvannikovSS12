@@ -1,0 +1,588 @@
+**Лабораторная работа 6. Часть 6. Сравнительный анализ функционального программирования в разных языках**
+
+**Цель работы:** Провести сравнительный анализ реализации концепций функционального программирования в изученных языках (Haskell, Python, JavaScript, Scala, Rust). Выявить сильные и слабые стороны каждого языка для решения практических задач в функциональном стиле.
+
+**Задачи:**
+1. Реализовать одинаковую задачу на всех пяти языках
+2. Сравнить синтаксис и выразительность кода
+3. Проанализировать производительность решений
+4. Оценить безопасность типов и надежность
+5. Сформулировать рекомендации по выбору языка для разных задач
+
+**Теоретическая часть**
+
+**Критерии сравнения языков:**
+
+*   **Выразительность** - лаконичность и читаемость кода
+*   **Безопасность типов** - статическая проверка типов на этапе компиляции
+*   **Производительность** - время выполнения и использование памяти
+*   **Экосистема** - доступные библиотеки и инструменты
+*   **Кривая обучения** - сложность освоения для разработчиков
+*   **Применимость** - оптимальные области использования
+
+**Сравниваемые языки:**
+- **Haskell** - академический эталон, чисто функциональный
+- **Python** - мультипарадигмальный с поддержкой ФП
+- **JavaScript** - ФП в веб-разработке и фронтенде
+- **Scala** - промышленное ФП на JVM для Big Data
+- **Rust** - системное ФП с гарантиями безопасности
+
+**Порядок выполнения работы**
+
+**1. Общая задача для всех языков**
+
+**Требования:** Реализовать систему обработки заказов интернет-магазина с следующими функциями:
+
+- Фильтрация заказов по статусу
+- Расчет общей стоимости заказов
+- Группировка заказов по пользователям
+- Поиск самых дорогих заказов
+- Применение скидок к заказам
+
+**Модель данных:**
+```python
+# Общая структура данных для всех языков
+User = {id, name, email}
+Product = {id, name, price, category}
+Order = {id, user_id, products: [{product_id, quantity}], status}
+```
+
+**2. Реализация на Haskell**
+
+Создайте файл `Comparison.hs`:
+
+```haskell
+module Comparison where
+
+-- Модель данных
+data User = User { userId :: Int, userName :: String, userEmail :: String }
+data Product = Product { productId :: Int, productName :: String, productPrice :: Double, productCategory :: String }
+data OrderItem = OrderItem { itemProduct :: Product, itemQuantity :: Int }
+data Order = Order { orderId :: Int, orderUser :: User, orderItems :: [OrderItem], orderStatus :: String }
+
+-- Пример данных
+users :: [User]
+users = [
+    User 1 "John Doe" "john@example.com",
+    User 2 "Jane Smith" "jane@example.com"
+    ]
+
+products :: [Product]
+products = [
+    Product 1 "iPhone" 999.99 "electronics",
+    Product 2 "MacBook" 1999.99 "electronics",
+    Product 3 "T-shirt" 29.99 "clothing"
+    ]
+
+orders :: [Order]
+orders = [
+    Order 1 (users !! 0) [OrderItem (products !! 0) 1, OrderItem (products !! 2) 2] "completed",
+    Order 2 (users !! 1) [OrderItem (products !! 1) 1] "pending"
+    ]
+
+-- Функции обработки
+calculateOrderTotal :: Order -> Double
+calculateOrderTotal order = sum [productPrice (itemProduct item) * fromIntegral (itemQuantity item) | item <- orderItems order]
+
+filterOrdersByStatus :: [Order] -> String -> [Order]
+filterOrdersByStatus orders status = filter (\order -> orderStatus order == status) orders
+
+getTopExpensiveOrders :: [Order] -> Int -> [Order]
+getTopExpensiveOrders orders n = take n $ sortBy (\a b -> compare (calculateOrderTotal b) (calculateOrderTotal a)) orders
+
+applyDiscount :: Order -> Double -> Order
+applyDiscount order discount = order { orderItems = map (applyItemDiscount discount) (orderItems order) }
+  where
+    applyItemDiscount discount item = item { itemProduct = (itemProduct item) { productPrice = productPrice (itemProduct item) * (1 - discount) } }
+
+-- Основная функция
+main :: IO ()
+main = do
+    let completedOrders = filterOrdersByStatus orders "completed"
+    let totalRevenue = sum $ map calculateOrderTotal completedOrders
+    putStrLn $ "Общая выручка: " ++ show totalRevenue
+    putStrLn $ "Топ заказы: " ++ show (map (calculateOrderTotal . fst) (zip (getTopExpensiveOrders orders 2) [1..]))
+```
+
+**3. Реализация на Python**
+
+Создайте файл `comparison.py`:
+
+```python
+from dataclasses import dataclass
+from typing import List, Dict
+import functools
+
+@dataclass
+class User:
+    id: int
+    name: str
+    email: str
+
+@dataclass
+class Product:
+    id: int
+    name: str
+    price: float
+    category: str
+
+@dataclass
+class OrderItem:
+    product: Product
+    quantity: int
+
+@dataclass
+class Order:
+    id: int
+    user: User
+    items: List[OrderItem]
+    status: str
+
+# Пример данных
+users = [
+    User(1, "John Doe", "john@example.com"),
+    User(2, "Jane Smith", "jane@example.com")
+]
+
+products = [
+    Product(1, "iPhone", 999.99, "electronics"),
+    Product(2, "MacBook", 1999.99, "electronics"),
+    Product(3, "T-shirt", 29.99, "clothing")
+]
+
+orders = [
+    Order(1, users[0], [OrderItem(products[0], 1), OrderItem(products[2], 2)], "completed"),
+    Order(2, users[1], [OrderItem(products[1], 1)], "pending")
+]
+
+# Функции обработки
+def calculate_order_total(order: Order) -> float:
+    return sum(item.product.price * item.quantity for item in order.items)
+
+def filter_orders_by_status(orders: List[Order], status: str) -> List[Order]:
+    return list(filter(lambda order: order.status == status, orders))
+
+def get_top_expensive_orders(orders: List[Order], n: int) -> List[Order]:
+    return sorted(orders, key=calculate_order_total, reverse=True)[:n]
+
+def apply_discount(order: Order, discount: float) -> Order:
+    discounted_items = [
+        OrderItem(
+            Product(
+                item.product.id,
+                item.product.name,
+                item.product.price * (1 - discount),
+                item.product.category
+            ),
+            item.quantity
+        ) for item in order.items
+    ]
+    return Order(order.id, order.user, discounted_items, order.status)
+
+def main():
+    completed_orders = filter_orders_by_status(orders, "completed")
+    total_revenue = sum(calculate_order_total(order) for order in completed_orders)
+    top_orders = get_top_expensive_orders(orders, 2)
+    
+    print(f"Общая выручка: {total_revenue}")
+    print(f"Топ заказы: {[calculate_order_total(order) for order in top_orders]}")
+
+if __name__ == "__main__":
+    main()
+```
+
+**4. Реализация на JavaScript**
+
+Создайте файл `comparison.js`:
+
+```javascript
+// Модель данных
+class User {
+    constructor(id, name, email) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+    }
+}
+
+class Product {
+    constructor(id, name, price, category) {
+        this.id = id;
+        this.name = name;
+        this.price = price;
+        this.category = category;
+    }
+}
+
+class OrderItem {
+    constructor(product, quantity) {
+        this.product = product;
+        this.quantity = quantity;
+    }
+}
+
+class Order {
+    constructor(id, user, items, status) {
+        this.id = id;
+        this.user = user;
+        this.items = items;
+        this.status = status;
+    }
+}
+
+// Пример данных
+const users = [
+    new User(1, "John Doe", "john@example.com"),
+    new User(2, "Jane Smith", "jane@example.com")
+];
+
+const products = [
+    new Product(1, "iPhone", 999.99, "electronics"),
+    new Product(2, "MacBook", 1999.99, "electronics"),
+    new Product(3, "T-shirt", 29.99, "clothing")
+];
+
+const orders = [
+    new Order(1, users[0], [
+        new OrderItem(products[0], 1),
+        new OrderItem(products[2], 2)
+    ], "completed"),
+    new Order(2, users[1], [
+        new OrderItem(products[1], 1)
+    ], "pending")
+];
+
+// Функции обработки
+const calculateOrderTotal = (order) => 
+    order.items.reduce((total, item) => total + (item.product.price * item.quantity), 0);
+
+const filterOrdersByStatus = (orders, status) => 
+    orders.filter(order => order.status === status);
+
+const getTopExpensiveOrders = (orders, n) => 
+    [...orders].sort((a, b) => calculateOrderTotal(b) - calculateOrderTotal(a)).slice(0, n);
+
+const applyDiscount = (order, discount) => {
+    const discountedItems = order.items.map(item => ({
+        ...item,
+        product: {
+            ...item.product,
+            price: item.product.price * (1 - discount)
+        }
+    }));
+    return { ...order, items: discountedItems };
+};
+
+// Основная функция
+const main = () => {
+    const completedOrders = filterOrdersByStatus(orders, "completed");
+    const totalRevenue = completedOrders.reduce((sum, order) => sum + calculateOrderTotal(order), 0);
+    const topOrders = getTopExpensiveOrders(orders, 2);
+    
+    console.log("Общая выручка:", totalRevenue);
+    console.log("Топ заказы:", topOrders.map(calculateOrderTotal));
+};
+
+main();
+```
+
+**5. Реализация на Scala**
+
+Создайте файл `Comparison.scala`:
+
+```scala
+object Comparison {
+  
+  // Модель данных
+  case class User(id: Int, name: String, email: String)
+  case class Product(id: Int, name: String, price: Double, category: String)
+  case class OrderItem(product: Product, quantity: Int)
+  case class Order(id: Int, user: User, items: List[OrderItem], status: String)
+  
+  // Пример данных
+  val users = List(
+    User(1, "John Doe", "john@example.com"),
+    User(2, "Jane Smith", "jane@example.com")
+  )
+  
+  val products = List(
+    Product(1, "iPhone", 999.99, "electronics"),
+    Product(2, "MacBook", 1999.99, "electronics"),
+    Product(3, "T-shirt", 29.99, "clothing")
+  )
+  
+  val orders = List(
+    Order(1, users(0), List(OrderItem(products(0), 1), OrderItem(products(2), 2)), "completed"),
+    Order(2, users(1), List(OrderItem(products(1), 1)), "pending")
+  )
+  
+  // Функции обработки
+  def calculateOrderTotal(order: Order): Double = 
+    order.items.map(item => item.product.price * item.quantity).sum
+  
+  def filterOrdersByStatus(orders: List[Order], status: String): List[Order] = 
+    orders.filter(_.status == status)
+  
+  def getTopExpensiveOrders(orders: List[Order], n: Int): List[Order] = 
+    orders.sortBy(calculateOrderTotal)(Ordering[Double].reverse).take(n)
+  
+  def applyDiscount(order: Order, discount: Double): Order = {
+    val discountedItems = order.items.map { item =>
+      item.copy(product = item.product.copy(price = item.product.price * (1 - discount)))
+    }
+    order.copy(items = discountedItems)
+  }
+  
+  def main(args: Array[String]): Unit = {
+    val completedOrders = filterOrdersByStatus(orders, "completed")
+    val totalRevenue = completedOrders.map(calculateOrderTotal).sum
+    val topOrders = getTopExpensiveOrders(orders, 2)
+    
+    println(s"Общая выручка: $totalRevenue")
+    println(s"Топ заказы: ${topOrders.map(calculateOrderTotal)}")
+  }
+}
+```
+
+**6. Реализация на Rust**
+
+Создайте файл `comparison.rs`:
+
+```rust
+#[derive(Debug, Clone)]
+struct User {
+    id: u32,
+    name: String,
+    email: String,
+}
+
+#[derive(Debug, Clone)]
+struct Product {
+    id: u32,
+    name: String,
+    price: f64,
+    category: String,
+}
+
+#[derive(Debug, Clone)]
+struct OrderItem {
+    product: Product,
+    quantity: u32,
+}
+
+#[derive(Debug, Clone)]
+struct Order {
+    id: u32,
+    user: User,
+    items: Vec<OrderItem>,
+    status: String,
+}
+
+impl User {
+    fn new(id: u32, name: &str, email: &str) -> Self {
+        User {
+            id,
+            name: name.to_string(),
+            email: email.to_string(),
+        }
+    }
+}
+
+impl Product {
+    fn new(id: u32, name: &str, price: f64, category: &str) -> Self {
+        Product {
+            id,
+            name: name.to_string(),
+            price,
+            category: category.to_string(),
+        }
+    }
+}
+
+impl OrderItem {
+    fn new(product: Product, quantity: u32) -> Self {
+        OrderItem { product, quantity }
+    }
+}
+
+impl Order {
+    fn new(id: u32, user: User, items: Vec<OrderItem>, status: &str) -> Self {
+        Order {
+            id,
+            user,
+            items,
+            status: status.to_string(),
+        }
+    }
+}
+
+// Функции обработки
+fn calculate_order_total(order: &Order) -> f64 {
+    order.items.iter()
+        .map(|item| item.product.price * item.quantity as f64)
+        .sum()
+}
+
+fn filter_orders_by_status(orders: &[Order], status: &str) -> Vec<Order> {
+    orders.iter()
+        .filter(|order| order.status == status)
+        .cloned()
+        .collect()
+}
+
+fn get_top_expensive_orders(orders: &[Order], n: usize) -> Vec<Order> {
+    let mut sorted_orders = orders.to_vec();
+    sorted_orders.sort_by(|a, b| {
+        calculate_order_total(b).partial_cmp(&calculate_order_total(a)).unwrap()
+    });
+    sorted_orders.into_iter().take(n).collect()
+}
+
+fn apply_discount(order: &Order, discount: f64) -> Order {
+    let discounted_items: Vec<OrderItem> = order.items.iter()
+        .map(|item| {
+            let discounted_product = Product {
+                price: item.product.price * (1.0 - discount),
+                ..item.product.clone()
+            };
+            OrderItem {
+                product: discounted_product,
+                ..item.clone()
+            }
+        })
+        .collect();
+    
+    Order {
+        items: discounted_items,
+        ..order.clone()
+    }
+}
+
+fn main() {
+    let users = vec![
+        User::new(1, "John Doe", "john@example.com"),
+        User::new(2, "Jane Smith", "jane@example.com"),
+    ];
+    
+    let products = vec![
+        Product::new(1, "iPhone", 999.99, "electronics"),
+        Product::new(2, "MacBook", 1999.99, "electronics"),
+        Product::new(3, "T-shirt", 29.99, "clothing"),
+    ];
+    
+    let orders = vec![
+        Order::new(
+            1, 
+            users[0].clone(), 
+            vec![
+                OrderItem::new(products[0].clone(), 1),
+                OrderItem::new(products[2].clone(), 2)
+            ], 
+            "completed"
+        ),
+        Order::new(
+            2, 
+            users[1].clone(), 
+            vec![
+                OrderItem::new(products[1].clone(), 1)
+            ], 
+            "pending"
+        ),
+    ];
+    
+    let completed_orders = filter_orders_by_status(&orders, "completed");
+    let total_revenue: f64 = completed_orders.iter().map(calculate_order_total).sum();
+    let top_orders = get_top_expensive_orders(&orders, 2);
+    
+    println!("Общая выручка: {:.2}", total_revenue);
+    println!("Топ заказы: {:?}", top_orders.iter().map(calculate_order_total).collect::<Vec<f64>>());
+}
+```
+
+**7. Сравнительный анализ**
+
+Создайте файл `analysis.md` с таблицей сравнения:
+
+| Критерий | Haskell | Python | JavaScript | Scala | Rust |
+|----------|---------|---------|-------------|-------|------|
+| **Выразительность** | Очень высокая | Высокая | Высокая | Очень высокая | Средняя |
+| **Безопасность типов** | Максимальная | Динамическая | Динамическая | Высокая | Максимальная |
+| **Производительность** | Высокая | Средняя | Средняя | Высокая | Максимальная |
+| **Иммутабельность** | По умолчанию | По желанию | По желанию | По умолчанию | По умолчанию |
+| **Обработка ошибок** | Monadic (Maybe/Either) | Исключения | Исключения | Try/Either | Result/Option |
+| **Кривая обучения** | Высокая | Низкая | Низкая | Средняя | Высокая |
+| **Экосистема** | Академическая | Огромная | Огромная | Промышленная | Растущая |
+
+**8. Практические задания для сравнения**
+
+**Задание 1:** Измерение производительности
+
+```python
+# Python - измерение времени выполнения
+import timeit
+
+def benchmark_python():
+    # Замер времени для 1000 выполнений
+    return timeit.timeit(lambda: sum(calculate_order_total(order) for order in orders), number=1000)
+```
+
+**Задание 2:** Анализ безопасности типов
+
+```rust
+// Rust - демонстрация проверок на этапе компиляции
+fn type_safe_calculation(order: &Order) -> f64 {
+    // Компилятор проверит все типы
+    order.items.iter()
+        .map(|item| item.product.price * f64::from(item.quantity))
+        .sum() // Тип возвращаемого значения проверяется
+}
+```
+
+**Задание 3:** Сравнение обработки ошибок
+
+```scala
+// Scala - обработка возможных ошибок
+def safeCalculateTotal(order: Order): Option[Double] = {
+  Try {
+    order.items.map(item => item.product.price * item.quantity).sum
+  }.toOption
+}
+```
+
+**Критерии оценки**
+
+**Удовлетворительно:**
+*   Реализована базовая функциональность на 3+ языках
+*   Проведено поверхностное сравнение синтаксиса
+*   Сформулированы основные различия между языками
+
+**Хорошо:**
+*   Реализована полная функциональность на всех 5 языках
+*   Проведен анализ выразительности и читаемости кода
+*   Сравнены подходы к обработке ошибок и системе типов
+*   Выполнены практические задания по сравнению
+
+**Отлично:**
+*   Проведены замеры производительности и анализ памяти
+*   Глубокий анализ преимуществ и недостатков каждого языка
+*   Сформулированы рекомендации для разных сценариев использования
+*   Созданы комплексные примеры с реальными use cases
+*   Проанализированы компромиссы в дизайне языков
+
+**Контрольные вопросы**
+1.  Какой язык оказался наиболее выразительным для ФП и почему?
+2.  Какие компромиссы между безопасностью типов и продуктивностью разработки вы заметили?
+3.  Как разные языки решают проблему побочных эффектов?
+4.  Какой язык вы бы выбрали для high-performance приложения и почему?
+5.  Какие особенности Rust делают его уникальным среди других языков?
+
+**Рекомендованная литература**
+1.  "Functional Programming in Scala" Paul Chiusano, Rúnar Bjarnason
+2.  "Learn You a Haskell for Great Good!" Miran Lipovača
+3.  "The Rust Programming Language" Steve Klabnik, Carol Nichols
+4.  "Professor Frisby's Mostly Adequate Guide to Functional Programming" (JavaScript)
+5.  "Functional Python Programming" Steven F. Lott
+
+**Выводы и рекомендации:**
+
+По результатам сравнительного анализа студенты должны сформулировать выводы о том, для каких задач оптимально подходит каждый из изученных языков, и создать руководство по выбору языка для проектов разного типа.
